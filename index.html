@@ -4,8 +4,91 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Code Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
     <style>
-        /* Предыдущие стили остаются без изменений */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        header {
+            background-color: #333;
+            color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 7px;
+        }
+        #description {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+            border-radius: 7px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        #language {
+            margin-bottom: 10px;
+            border-radius: 7px;
+            padding: 5px;
+        }
+        #fileInput {
+            margin-bottom: 20px;
+        }
+        #codeBlocks {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .codeBlock {
+            background-color: #333;
+            color: #f0f0f0;
+            border-radius: 7px;
+            padding: 15px;
+            width: calc(50% - 10px);
+            box-sizing: border-box;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .codeBlock h2 {
+            margin-top: 0;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 10px;
+            font-size: 18px;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin: 0;
+        }
+        code {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        #clearButton, #shareButton {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        #clearButton {
+            background-color: #f44336;
+        }
+        #clearButton:hover {
+            background-color: #d32f2f;
+        }
+        #shareButton:hover {
+            background-color: #45a049;
+        }
+        #shareLink {
+            margin-top: 20px;
+            word-break: break-all;
+        }
     </style>
 </head>
 <body>
@@ -39,6 +122,9 @@
         shareButton.addEventListener('click', shareCode);
 
         let savedCode = {};
+
+        // Load code from URL if present
+        window.addEventListener('load', loadFromUrl);
 
         function handleFiles() {
             const files = fileInput.files;
@@ -77,37 +163,25 @@
             shareLinkDiv.innerHTML = '';
         }
 
-        async function shareCode() {
-            const files = {};
-            for (const [filename, content] of Object.entries(savedCode)) {
-                files[filename] = { content };
-            }
+        function shareCode() {
+            const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(savedCode));
+            const shareUrl = `${window.location.origin}${window.location.pathname}?code=${compressed}`;
+            shareLinkDiv.innerHTML = `<a href="${shareUrl}" target="_blank">Shared Code Link</a>`;
+        }
 
-            const gistData = {
-                description: description.value || "Shared Code",
-                public: false,
-                files: files
-            };
-
-            try {
-                const response = await fetch('https://api.github.com/gists', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(gistData)
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    const gistUrl = data.html_url;
-                    shareLinkDiv.innerHTML = `<a href="${gistUrl}" target="_blank">Shared Code Link (GitHub Gist)</a>`;
-                } else {
-                    throw new Error('Failed to create gist');
+        function loadFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const compressedCode = urlParams.get('code');
+            if (compressedCode) {
+                try {
+                    const decompressed = LZString.decompressFromEncodedURIComponent(compressedCode);
+                    savedCode = JSON.parse(decompressed);
+                    for (const [fileName, content] of Object.entries(savedCode)) {
+                        addCodeBlock(fileName, content);
+                    }
+                } catch (error) {
+                    console.error('Error loading code from URL:', error);
                 }
-            } catch (error) {
-                console.error('Error sharing code:', error);
-                shareLinkDiv.textContent = 'Error sharing code. Please try again.';
             }
         }
     </script>
