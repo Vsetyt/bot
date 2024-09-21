@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        header {
+            background-color: #333;
+            color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        #description {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+        }
+        #language {
+            margin-bottom: 10px;
+        }
+        #fileInput {
+            margin-bottom: 20px;
+        }
+        #codeBlocks {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .codeBlock {
+            background-color: #333;
+            color: #f0f0f0;
+            border-radius: 5px;
+            padding: 15px;
+            width: calc(50% - 10px);
+            box-sizing: border-box;
+        }
+        .codeBlock h2 {
+            margin-top: 0;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin: 0;
+        }
+        code {
+            font-family: 'Courier New', Courier, monospace;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <textarea id="description" placeholder="Enter project description"></textarea>
+        <select id="language">
+            <option value="javascript">JavaScript</option>
+            <option value="python">Python</option>
+            <option value="java">Java</option>
+            <option value="csharp">C#</option>
+            <option value="cpp">C++</option>
+        </select>
+        <input type="file" id="fileInput" multiple>
+    </header>
+    <div id="codeBlocks"></div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const codeBlocks = document.getElementById('codeBlocks');
+        const description = document.getElementById('description');
+        const language = document.getElementById('language');
+
+        fileInput.addEventListener('change', handleFiles);
+
+        function handleFiles() {
+            const files = fileInput.files;
+            codeBlocks.innerHTML = '';
+
+            for (let file of files) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    addCodeBlock(file.name, content);
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function addCodeBlock(fileName, content) {
+            const block = document.createElement('div');
+            block.className = 'codeBlock';
+            
+            const title = document.createElement('h2');
+            title.textContent = fileName;
+            block.appendChild(title);
+
+            const pre = document.createElement('pre');
+            const code = document.createElement('code');
+            code.textContent = content;
+            pre.appendChild(code);
+            block.appendChild(pre);
+
+            codeBlocks.appendChild(block);
+        }
+    </script>
+</body>
+</html>
