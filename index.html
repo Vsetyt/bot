@@ -78,26 +78,32 @@
         }
 
         async function shareCode() {
-            const codeString = JSON.stringify(savedCode);
-            const pasteData = new FormData();
-            pasteData.append('api_dev_key', 'BAAIjdXJqkBCmY36nwWkV-jbt5MSbQKh'); // Замените на ваш API ключ Pastebin
-            pasteData.append('api_option', 'paste');
-            pasteData.append('api_paste_code', codeString);
-            pasteData.append('api_paste_private', '1'); // 0=public, 1=unlisted, 2=private
-            pasteData.append('api_paste_name', 'Shared Code');
-            pasteData.append('api_paste_expire_date', '1H'); // Истекает через 1 час
+            const files = {};
+            for (const [filename, content] of Object.entries(savedCode)) {
+                files[filename] = { content };
+            }
+
+            const gistData = {
+                description: description.value || "Shared Code",
+                public: false,
+                files: files
+            };
 
             try {
-                const response = await fetch('https://pastebin.com/api/api_post.php', {
+                const response = await fetch('https://api.github.com/gists', {
                     method: 'POST',
-                    body: pasteData
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(gistData)
                 });
 
                 if (response.ok) {
-                    const pasteUrl = await response.text();
-                    shareLinkDiv.innerHTML = `<a href="${pasteUrl}" target="_blank">Shared Code Link</a>`;
+                    const data = await response.json();
+                    const gistUrl = data.html_url;
+                    shareLinkDiv.innerHTML = `<a href="${gistUrl}" target="_blank">Shared Code Link (GitHub Gist)</a>`;
                 } else {
-                    throw new Error('Failed to create paste');
+                    throw new Error('Failed to create gist');
                 }
             } catch (error) {
                 console.error('Error sharing code:', error);
