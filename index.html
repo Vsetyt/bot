@@ -16,14 +16,20 @@
             color: white;
             padding: 20px;
             margin-bottom: 20px;
+            border-radius: 7px;
         }
         #description {
             width: 100%;
             height: 100px;
             margin-bottom: 10px;
+            border-radius: 7px;
+            padding: 10px;
+            box-sizing: border-box;
         }
         #language {
             margin-bottom: 10px;
+            border-radius: 7px;
+            padding: 5px;
         }
         #fileInput {
             margin-bottom: 20px;
@@ -36,15 +42,17 @@
         .codeBlock {
             background-color: #333;
             color: #f0f0f0;
-            border-radius: 5px;
+            border-radius: 7px;
             padding: 15px;
             width: calc(50% - 10px);
             box-sizing: border-box;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         .codeBlock h2 {
             margin-top: 0;
             border-bottom: 1px solid #f0f0f0;
             padding-bottom: 10px;
+            font-size: 18px;
         }
         pre {
             white-space: pre-wrap;
@@ -53,6 +61,28 @@
         }
         code {
             font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        #clearButton, #shareButton {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        #clearButton {
+            background-color: #f44336;
+        }
+        #clearButton:hover {
+            background-color: #d32f2f;
+        }
+        #shareButton:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
@@ -69,24 +99,33 @@
         <input type="file" id="fileInput" multiple>
     </header>
     <div id="codeBlocks"></div>
+    <button id="clearButton">Clear All Code</button>
+    <button id="shareButton">Share Code</button>
 
     <script>
         const fileInput = document.getElementById('fileInput');
         const codeBlocks = document.getElementById('codeBlocks');
         const description = document.getElementById('description');
         const language = document.getElementById('language');
+        const clearButton = document.getElementById('clearButton');
+        const shareButton = document.getElementById('shareButton');
 
         fileInput.addEventListener('change', handleFiles);
+        clearButton.addEventListener('click', clearAllCode);
+        shareButton.addEventListener('click', shareCode);
+
+        // Load saved code on page load
+        window.addEventListener('load', loadSavedCode);
 
         function handleFiles() {
             const files = fileInput.files;
-            codeBlocks.innerHTML = '';
 
             for (let file of files) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const content = e.target.result;
                     addCodeBlock(file.name, content);
+                    saveCodeToLocalStorage(file.name, content);
                 };
                 reader.readAsText(file);
             }
@@ -107,6 +146,47 @@
             block.appendChild(pre);
 
             codeBlocks.appendChild(block);
+        }
+
+        function saveCodeToLocalStorage(fileName, content) {
+            let savedCode = JSON.parse(localStorage.getItem('savedCode')) || {};
+            savedCode[fileName] = content;
+            localStorage.setItem('savedCode', JSON.stringify(savedCode));
+        }
+
+        function loadSavedCode() {
+            let savedCode = JSON.parse(localStorage.getItem('savedCode')) || {};
+            for (let fileName in savedCode) {
+                addCodeBlock(fileName, savedCode[fileName]);
+            }
+
+            // Load code from URL if present
+            const urlParams = new URLSearchParams(window.location.search);
+            const sharedCode = urlParams.get('code');
+            if (sharedCode) {
+                const decodedCode = JSON.parse(decodeURIComponent(sharedCode));
+                for (let fileName in decodedCode) {
+                    addCodeBlock(fileName, decodedCode[fileName]);
+                    saveCodeToLocalStorage(fileName, decodedCode[fileName]);
+                }
+            }
+        }
+
+        function clearAllCode() {
+            codeBlocks.innerHTML = '';
+            localStorage.removeItem('savedCode');
+        }
+
+        function shareCode() {
+            let savedCode = JSON.parse(localStorage.getItem('savedCode')) || {};
+            const encodedCode = encodeURIComponent(JSON.stringify(savedCode));
+            const shareUrl = `${window.location.origin}${window.location.pathname}?code=${encodedCode}`;
+            
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                alert('Share link copied to clipboard!');
+            }).catch(err => {
+                console.error('Could not copy text: ', err);
+            });
         }
     </script>
 </body>
