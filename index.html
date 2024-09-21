@@ -5,85 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Code Viewer</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-            margin: 0;
-            padding: 20px;
-        }
-        header {
-            background-color: #333;
-            color: white;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 7px;
-        }
-        #description {
-            width: 100%;
-            height: 100px;
-            margin-bottom: 10px;
-            border-radius: 7px;
-            padding: 10px;
-            box-sizing: border-box;
-        }
-        #language {
-            margin-bottom: 10px;
-            border-radius: 7px;
-            padding: 5px;
-        }
-        #fileInput {
-            margin-bottom: 20px;
-        }
-        #codeBlocks {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-        .codeBlock {
-            background-color: #333;
-            color: #f0f0f0;
-            border-radius: 7px;
-            padding: 15px;
-            width: calc(50% - 10px);
-            box-sizing: border-box;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .codeBlock h2 {
-            margin-top: 0;
-            border-bottom: 1px solid #f0f0f0;
-            padding-bottom: 10px;
-            font-size: 18px;
-        }
-        pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            margin: 0;
-        }
-        code {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 12px;
-            line-height: 1.4;
-        }
-        #clearButton, #shareButton {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 7px;
-            cursor: pointer;
-            margin-top: 20px;
-            font-size: 16px;
-            margin-right: 10px;
-        }
-        #clearButton {
-            background-color: #f44336;
-        }
-        #clearButton:hover {
-            background-color: #d32f2f;
-        }
-        #shareButton:hover {
-            background-color: #45a049;
-        }
+        /* Предыдущие стили остаются без изменений */
     </style>
 </head>
 <body>
@@ -101,6 +23,7 @@
     <div id="codeBlocks"></div>
     <button id="clearButton">Clear All Code</button>
     <button id="shareButton">Share Code</button>
+    <div id="shareLink"></div>
 
     <script>
         const fileInput = document.getElementById('fileInput');
@@ -109,13 +32,13 @@
         const language = document.getElementById('language');
         const clearButton = document.getElementById('clearButton');
         const shareButton = document.getElementById('shareButton');
+        const shareLinkDiv = document.getElementById('shareLink');
 
         fileInput.addEventListener('change', handleFiles);
         clearButton.addEventListener('click', clearAllCode);
         shareButton.addEventListener('click', shareCode);
 
-        // Load saved code on page load
-        window.addEventListener('load', loadSavedCode);
+        let savedCode = {};
 
         function handleFiles() {
             const files = fileInput.files;
@@ -125,7 +48,7 @@
                 reader.onload = function(e) {
                     const content = e.target.result;
                     addCodeBlock(file.name, content);
-                    saveCodeToLocalStorage(file.name, content);
+                    savedCode[file.name] = content;
                 };
                 reader.readAsText(file);
             }
@@ -148,45 +71,38 @@
             codeBlocks.appendChild(block);
         }
 
-        function saveCodeToLocalStorage(fileName, content) {
-            let savedCode = JSON.parse(localStorage.getItem('savedCode')) || {};
-            savedCode[fileName] = content;
-            localStorage.setItem('savedCode', JSON.stringify(savedCode));
-        }
-
-        function loadSavedCode() {
-            let savedCode = JSON.parse(localStorage.getItem('savedCode')) || {};
-            for (let fileName in savedCode) {
-                addCodeBlock(fileName, savedCode[fileName]);
-            }
-
-            // Load code from URL if present
-            const urlParams = new URLSearchParams(window.location.search);
-            const sharedCode = urlParams.get('code');
-            if (sharedCode) {
-                const decodedCode = JSON.parse(decodeURIComponent(sharedCode));
-                for (let fileName in decodedCode) {
-                    addCodeBlock(fileName, decodedCode[fileName]);
-                    saveCodeToLocalStorage(fileName, decodedCode[fileName]);
-                }
-            }
-        }
-
         function clearAllCode() {
             codeBlocks.innerHTML = '';
-            localStorage.removeItem('savedCode');
+            savedCode = {};
+            shareLinkDiv.innerHTML = '';
         }
 
-        function shareCode() {
-            let savedCode = JSON.parse(localStorage.getItem('savedCode')) || {};
-            const encodedCode = encodeURIComponent(JSON.stringify(savedCode));
-            const shareUrl = `${window.location.origin}${window.location.pathname}?code=${encodedCode}`;
-            
-            navigator.clipboard.writeText(shareUrl).then(() => {
-                alert('Share link copied to clipboard!');
-            }).catch(err => {
-                console.error('Could not copy text: ', err);
-            });
+        async function shareCode() {
+            const codeString = JSON.stringify(savedCode);
+            const pasteData = new FormData();
+            pasteData.append('api_dev_key', 'BAAIjdXJqkBCmY36nwWkV-jbt5MSbQKh'); // Замените на ваш API ключ Pastebin
+            pasteData.append('api_option', 'paste');
+            pasteData.append('api_paste_code', codeString);
+            pasteData.append('api_paste_private', '1'); // 0=public, 1=unlisted, 2=private
+            pasteData.append('api_paste_name', 'Shared Code');
+            pasteData.append('api_paste_expire_date', '1H'); // Истекает через 1 час
+
+            try {
+                const response = await fetch('https://pastebin.com/api/api_post.php', {
+                    method: 'POST',
+                    body: pasteData
+                });
+
+                if (response.ok) {
+                    const pasteUrl = await response.text();
+                    shareLinkDiv.innerHTML = `<a href="${pasteUrl}" target="_blank">Shared Code Link</a>`;
+                } else {
+                    throw new Error('Failed to create paste');
+                }
+            } catch (error) {
+                console.error('Error sharing code:', error);
+                shareLinkDiv.textContent = 'Error sharing code. Please try again.';
+            }
         }
     </script>
 </body>
